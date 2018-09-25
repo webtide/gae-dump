@@ -2,5 +2,5 @@ A GAE Dump utility webapp
 =========
 
 ```
-mvn gcloud:deploy
+mvn appengine:deploy
 ```

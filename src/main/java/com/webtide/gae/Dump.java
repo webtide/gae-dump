@@ -179,13 +179,13 @@ public class Dump extends HttpServlet
             }
         }
 
-        if (request.getParameter("startAsync")!=null && request.getAttribute("ASYNC")!=Boolean.TRUE)
+        if (request.getParameter("async")!=null && request.getAttribute("ASYNC")!=Boolean.TRUE)
         {
             request.setAttribute("ASYNC",Boolean.TRUE);
             try
             {
                 final AsyncContext async=request.startAsync(request,response);
-                async.setTimeout(Long.parseLong(request.getParameter("startAsync")));
+                async.setTimeout(Long.parseLong(request.getParameter("async")));
                 async.addListener(new AsyncListener()
                 {
                     
@@ -274,7 +274,7 @@ public class Dump extends HttpServlet
 
         request.setAttribute("Dump", this);
         getServletContext().setAttribute("Dump",this);
-        // getServletContext().log("dump "+request.getRequestURI());
+        getServletContext().log("dump "+request.getRequestURI());
 
         // Force a content length response
         String length= request.getParameter("length");
@@ -433,9 +433,42 @@ public class Dump extends HttpServlet
         try
         {
             pout.write("<html>\n<body>\n");
-            pout.write("<h1>Dump Servlet</h1>\n");
+            pout.write("<h1>Dump Servlet: </h1>\n");
             pout.write("<a href=\"/\">home</a><br/>\n");
             pout.write("<table width=\"95%\">");
+
+
+            pout.write("<th align=\"left\" colspan=\"2\"><big><br/>ServletContext:</big></th>");
+            ServletContext context = getServletContext();
+            pout.write("<tr>\n");
+            pout.write("<th align=\"right\">context.getServerInfo():&nbsp;</th>");
+            pout.write("<td>"+context.getServerInfo()+"</td>");
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"right\">context.getContextPath():&nbsp;</th>");
+            pout.write("<td>"+context.getContextPath()+"</td>");
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"right\">context.getRealPath(\"/\"):&nbsp;</th>");
+            pout.write("<td>"+context.getRealPath("/")+"</td>");
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"right\">context.getServletContextName():&nbsp;</th>");
+            pout.write("<td>"+context.getServletContextName()+"</td>");
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"right\">context.getVirtualServerName():&nbsp;</th>");
+            pout.write("<td>"+context.getVirtualServerName()+"</td>");
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"right\">context.getDefaultSessionTrackingModes():&nbsp;</th>");
+            pout.write("<td>"+context.getDefaultSessionTrackingModes()+"</td>");
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"right\">context.getEffective[Major|Minor]Version():&nbsp;</th>");
+            pout.write("<td>"+context.getEffectiveMajorVersion()+"&nbsp;.&nbsp;"+context.getEffectiveMinorVersion()+"</td>");
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"right\">context.get[Major|Minor]Version():&nbsp;</th>");
+            pout.write("<td>"+context.getMajorVersion()+"&nbsp;.&nbsp;"+context.getMinorVersion()+"</td>");
+            pout.write("</tr>");
+
+            pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Request:</big></th>");
+
+
             pout.write("<tr>\n");
             pout.write("<th align=\"right\">getContentLength:&nbsp;</th>");
             pout.write("<td>"+Integer.toString(request.getContentLength())+"</td>");
@@ -716,31 +749,31 @@ public class Dump extends HttpServlet
                 pout.write("</tr><tr>\n");
                 pout.write("<th align=\"right\">getServletContext().getContext(...):&nbsp;</th>");
 
-                ServletContext context = getServletContext().getContext(res);
-                pout.write("<td>"+context+"</td>");
+                ServletContext ctx = getServletContext().getContext(res);
+                pout.write("<td>"+ctx+"</td>");
 
-                if (context!=null)
+                if (ctx!=null)
                 {
                     pout.write("</tr><tr>\n");
                     pout.write("<th align=\"right\">getServletContext().getContext(...).getResource(...):&nbsp;</th>");
-                    try{pout.write("<td>"+context.getResource(res)+"</td>");}
+                    try{pout.write("<td>"+ctx.getResource(res)+"</td>");}
                     catch(Exception e) {pout.write("<td>"+"" +e+"</td>");}
 
                     pout.write("</tr><tr>\n");
                     pout.write("<th align=\"right\">getServletContext().getContext(...).getResourcePaths(...):&nbsp;</th>");
-                    try{pout.write("<td>"+context.getResourcePaths(res)+"</td>");}
+                    try{pout.write("<td>"+ctx.getResourcePaths(res)+"</td>");}
                     catch(Exception e) {pout.write("<td>"+"" +e+"</td>");}
 
-                    String cp=context.getContextPath();
+                    String cp=ctx.getContextPath();
                     if (cp==null || "/".equals(cp))
                         cp="";
                     pout.write("</tr><tr>\n");
                     pout.write("<th align=\"right\">getServletContext().getContext(...).getRequestDispatcher(...):&nbsp;</th>");
-                    pout.write("<td>"+context.getRequestDispatcher(res.substring(cp.length()))+"</td>");
+                    pout.write("<td>"+ctx.getRequestDispatcher(res.substring(cp.length()))+"</td>");
                     
                     pout.write("</tr><tr>\n");
                     pout.write("<th align=\"right\">getServletContext().getContext(...).getRealPath(...):&nbsp;</th>");
-                    pout.write("<td>"+context.getRealPath(res.substring(cp.length()))+"</td>");
+                    pout.write("<td>"+ctx.getRealPath(res.substring(cp.length()))+"</td>");
                 }
 
                 pout.write("</tr><tr>\n");
