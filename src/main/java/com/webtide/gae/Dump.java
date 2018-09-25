@@ -61,7 +61,7 @@ import java.util.TimerTask;
  * Dump Servlet Request.
  */
 @SuppressWarnings("serial")
-@WebServlet(name = "Dump", value = "/dump/*")
+@WebServlet(name = "Dump", value = "/dump/*", asyncSupported = true)
 public class Dump extends HttpServlet
 {
     boolean fixed;
@@ -828,6 +828,11 @@ public class Dump extends HttpServlet
                 else
                     rsw=null;
             }
+            
+            /* ------------------------------------------------------------ */
+            pout.write("<h2>Stack</h2>\n<pre>");
+            new Throwable("Stack dump").printStackTrace(pout);
+            pout.write("</pre>");
 
             pout.write("<br/>");
             pout.write("<h2>International Characters (UTF-8)</h2>");
