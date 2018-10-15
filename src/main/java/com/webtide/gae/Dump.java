@@ -61,7 +61,7 @@ import java.util.TimerTask;
  * Dump Servlet Request.
  */
 @SuppressWarnings("serial")
-@WebServlet(name = "Dump", value = "/dump/*", asyncSupported = true)
+@WebServlet(name = "Dump", value = {"/dump/*", ".dump"}, asyncSupported = true)
 public class Dump extends HttpServlet
 {
     boolean fixed;
@@ -232,36 +232,46 @@ public class Dump extends HttpServlet
                     request.setAttribute("RESUME",Boolean.TRUE);
 
                     final long resume=Long.parseLong(request.getParameter("dispatch"));
-                    _timer.schedule(new TimerTask()
-                    {
-                        @Override
-                        public void run()
-                        {
-                            async.dispatch();
-                        }
-                    },resume);
+            if (resume==0)
+                async.dispatch();
+            else
+            {
+            _timer.schedule(new TimerTask()
+            {
+                @Override
+                public void run()
+                {
+                async.dispatch();
+                }
+            },resume);
+            }
                 }
 
                 if (request.getParameter("complete")!=null)
                 {
                     final long complete=Long.parseLong(request.getParameter("complete"));
-                    _timer.schedule(new TimerTask()
-                    {
-                        @Override
-                        public void run()
-                        {
-                            try
-                            {
-                                response.setContentType("text/html");
-                                response.getOutputStream().println("<h1>COMPLETED</h1>");
-                                async.complete();
-                            }
-                            catch(Exception e)
-                            {
-                                e.printStackTrace();
-                            }
-                        }
-                    },complete);
+            if (complete==0)
+                async.complete();
+            else
+            {
+            _timer.schedule(new TimerTask()
+            {
+                @Override
+                public void run()
+                {
+                try
+                {
+                    response.setContentType("text/html");
+                    response.getOutputStream().println("<h1>COMPLETED</h1>");
+                    async.complete();
+                }
+                catch(Exception e)
+                {
+                    e.printStackTrace();
+                }
+                }
+            },complete);
+            }
                 }
                 
                 return;
@@ -828,7 +838,7 @@ public class Dump extends HttpServlet
                 else
                     rsw=null;
             }
-            
+
             /* ------------------------------------------------------------ */
             pout.write("<h2>Stack</h2>\n<pre>");
             new Throwable("Stack dump").printStackTrace(pout);
@@ -900,6 +910,12 @@ public class Dump extends HttpServlet
                 pout.write(line);
             }
         }
+
+    pout.write("<h2>Async links</h2><ul>");
+    pout.write("<li><a href=\".?async=5000\">Async wait 5s then timeout</a></li>");
+    pout.write("<li><a href=\".?async=5000&dispatch=4000\">Async wait 4s then dispatch</a></li>");
+    pout.write("<li><a href=\".?async=5000&complete=4000\">Async wait 4s then complete</a></li>");
+    pout.write("<li><a href=\".?async=5000&complete=0\">Async start then complete</a></li>");
 
         pout.write("</body>\n</html>\n");
 
