@@ -61,7 +61,7 @@ import java.util.TimerTask;
  * Dump Servlet Request.
  */
 @SuppressWarnings("serial")
-@WebServlet(name = "Dump", value = {"/dump/*", ".dump"}, asyncSupported = true)
+@WebServlet(name = "Dump", value = {"/dump/*", "*.dump"}, asyncSupported = true)
 public class Dump extends HttpServlet
 {
     boolean fixed;
