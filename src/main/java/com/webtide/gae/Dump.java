@@ -49,13 +49,7 @@ import java.io.Reader;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.net.URL;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.Locale;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 
 /**
  * Dump Servlet Request.
@@ -707,7 +701,7 @@ public class Dump extends HttpServlet
             a= getInitParameterNames();
             while (a.hasMoreElements())
             {
-                name= (String)a.nextElement();
+                name = (String)a.nextElement();
                 pout.write("</tr><tr>\n");
                 pout.write("<th align=\"right\">"+name+":&nbsp;</th>");
                 pout.write("<td>"+ toString(getInitParameter(name)) +"</td>");
@@ -718,7 +712,7 @@ public class Dump extends HttpServlet
             a= getServletContext().getInitParameterNames();
             while (a.hasMoreElements())
             {
-                name= (String)a.nextElement();
+                name = (String)a.nextElement();
                 pout.write("</tr><tr>\n");
                 pout.write("<th align=\"right\" valign=\"top\">"+name.replace("."," .")+":&nbsp;</th>");
                 pout.write("<td>"+ toString(getServletContext().getInitParameter(name)) + "</td>");
@@ -729,12 +723,84 @@ public class Dump extends HttpServlet
             a= getServletContext().getAttributeNames();
             while (a.hasMoreElements())
             {
-                name= (String)a.nextElement();
+                name = (String)a.nextElement();
                 pout.write("</tr><tr>\n");
                 pout.write("<th align=\"right\" valign=\"top\">"+name.replace("."," .")+":&nbsp;</th>");
                 pout.write("<td>"+"<pre>" + toString(getServletContext().getAttribute(name)) + "</pre>"+"</td>");
             }
 
+            /* ------------------------------------------------------------ */
+            pout.write("<h2>Request Wrappers</h2>\n");
+            ServletRequest rw=request;
+            int w=0;
+            while (rw !=null)
+            {
+                pout.write((w++)+": "+rw.getClass().getName()+"<br/>");
+                if (rw instanceof HttpServletRequestWrapper)
+                    rw=((HttpServletRequestWrapper)rw).getRequest();
+                else if (rw instanceof ServletRequestWrapper)
+                    rw=((ServletRequestWrapper)rw).getRequest();
+                else
+                    rw=null;
+            }
+
+            /* ------------------------------------------------------------ */
+            pout.write("<h2>Response Wrappers</h2>\n");
+            ServletResponse rsw=response;
+            w=0;
+            while (rsw !=null)
+            {
+                pout.write((w++)+": "+rsw.getClass().getName()+"<br/>");
+                if (rsw instanceof HttpServletResponseWrapper)
+                    rsw=((HttpServletResponseWrapper)rsw).getResponse();
+                else if (rsw instanceof ServletResponseWrapper)
+                    rsw=((ServletResponseWrapper)rsw).getResponse();
+                else
+                    rsw=null;
+            }
+
+            /* ------------------------------------------------------------ */
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"left\" colspan=\"2\"><big><br/>System Properties:</big></th>");
+            Enumeration p = System.getProperties().propertyNames();
+            while (p.hasMoreElements())
+            {
+                name = (String)p.nextElement();
+                pout.write("</tr><tr>\n");
+                pout.write("<th align=\"right\" valign=\"top\">"+name+":&nbsp;</th>");
+                pout.write("<td>"+"<pre>" + toString(System.getProperty(name)) + "</pre>"+"</td>");
+            }
+
+            /* ------------------------------------------------------------ */
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Environment:</big></th>");
+            for (Iterator<String> i = System.getenv().keySet().iterator(); i.hasNext() ;)
+            {
+                name = i.next();
+                pout.write("</tr><tr>\n");
+                pout.write("<th align=\"right\" valign=\"top\">"+name+":&nbsp;</th>");
+                pout.write("<td>"+"<pre>" + toString(System.getenv(name)) + "</pre>"+"</td>");
+            }
+
+            /* ------------------------------------------------------------ */
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Runtime:</big></th>");
+            Runtime rt = Runtime.getRuntime();
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"right\">availableProcessors:&nbsp;</th>");
+            pout.write("<td><pre>"+rt.availableProcessors()+"</pre></td>");
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"right\">freeMemory:&nbsp;</th>");
+            pout.write("<td><pre>"+rt.freeMemory()+"</pre></td>");
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"right\">maxMemory:&nbsp;</th>");
+            pout.write("<td><pre>"+rt.maxMemory()+"</pre></td>");
+            pout.write("</tr><tr>\n");
+            pout.write("<th align=\"right\">totalMemory:&nbsp;</th>");
+            pout.write("<td><pre>"+rt.totalMemory()+"</pre></td>");
+
+
+            /* ------------------------------------------------------------ */
             String res= request.getParameter("resource");
             if (res != null && res.length() > 0)
             {
@@ -808,36 +874,6 @@ public class Dump extends HttpServlet
             }
 
             pout.write("</tr></table>\n");
-
-            /* ------------------------------------------------------------ */
-            pout.write("<h2>Request Wrappers</h2>\n");
-            ServletRequest rw=request;
-            int w=0;
-            while (rw !=null)
-            {
-                pout.write((w++)+": "+rw.getClass().getName()+"<br/>");
-                if (rw instanceof HttpServletRequestWrapper)
-                    rw=((HttpServletRequestWrapper)rw).getRequest();
-                else if (rw instanceof ServletRequestWrapper)
-                    rw=((ServletRequestWrapper)rw).getRequest();
-                else
-                    rw=null;
-            }
-
-            /* ------------------------------------------------------------ */
-            pout.write("<h2>Response Wrappers</h2>\n");
-            ServletResponse rsw=response;
-            w=0;
-            while (rsw !=null)
-            {
-                pout.write((w++)+": "+rsw.getClass().getName()+"<br/>");
-                if (rsw instanceof HttpServletResponseWrapper)
-                    rsw=((HttpServletResponseWrapper)rsw).getResponse();
-                else if (rsw instanceof ServletResponseWrapper)
-                    rsw=((ServletResponseWrapper)rsw).getResponse();
-                else
-                    rsw=null;
-            }
 
             /* ------------------------------------------------------------ */
             pout.write("<h2>Stack</h2>\n<pre>");
