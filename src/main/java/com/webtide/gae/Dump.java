@@ -50,6 +50,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.*;
+import java.util.logging.Logger;
 
 /**
  * Dump Servlet Request.
@@ -58,6 +59,7 @@ import java.util.*;
 @WebServlet(name = "Dump", value = {"/dump/*", "*.dump"}, asyncSupported = true)
 public class Dump extends HttpServlet
 {
+    Logger LOG = Logger.getLogger(Dump.class.toString());
     boolean fixed;
     Timer _timer;
 
@@ -278,7 +280,8 @@ public class Dump extends HttpServlet
 
         request.setAttribute("Dump", this);
         getServletContext().setAttribute("Dump",this);
-        getServletContext().log("dump "+request.getRequestURI());
+        getServletContext().log("dump ctx.log "+request.getRequestURI());
+        LOG.info("dump jul.log "+request.getRequestURI());
 
         // Force a content length response
         String length= request.getParameter("length");
