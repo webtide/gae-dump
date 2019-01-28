@@ -43,5 +43,15 @@
       <transport-guarantee>CONFIDENTIAL</transport-guarantee>
     </user-data-constraint>
   </security-constraint>
+
+  <servlet>
+     <servlet-name>foo.jsp</servlet-name>
+     <jsp-file>/jsp/foo/foo.jsp</jsp-file>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>foo.jsp</servlet-name>
+    <url-pattern>/jsp/foo/</url-pattern>
+  </servlet-mapping>
+
 </web-app>
 

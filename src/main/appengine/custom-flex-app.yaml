@@ -1,3 +1,4 @@
+# To use this file, rename to app.yaml and remove the appengine-web.xml file
 runtime: custom
 env: flex
 

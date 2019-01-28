@@ -18,18 +18,7 @@
 
 package com.webtide.gae;
 
-import javax.servlet.AsyncContext;
-import javax.servlet.AsyncEvent;
-import javax.servlet.AsyncListener;
-import javax.servlet.RequestDispatcher;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletRequestWrapper;
-import javax.servlet.ServletResponse;
-import javax.servlet.ServletResponseWrapper;
-import javax.servlet.UnavailableException;
+import javax.servlet.*;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -49,6 +38,7 @@ import java.io.Reader;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.*;
 import java.util.logging.Logger;
 
@@ -184,7 +174,7 @@ public class Dump extends HttpServlet
                 async.setTimeout(Long.parseLong(request.getParameter("async")));
                 async.addListener(new AsyncListener()
                 {
-                    
+
                     @Override
                     public void onTimeout(AsyncEvent event) throws IOException
                     {
@@ -203,19 +193,19 @@ public class Dump extends HttpServlet
                             getServletContext().log("",e);
                         }
                     }
-                    
+
                     @Override
                     public void onStartAsync(AsyncEvent event) throws IOException
                     {
                         response.addHeader("Dump","onStartAsync");
                     }
-                    
+
                     @Override
                     public void onError(AsyncEvent event) throws IOException
                     {
                         response.addHeader("Dump","onError");
                     }
-                    
+
                     @Override
                     public void onComplete(AsyncEvent event) throws IOException
                     {
@@ -228,48 +218,48 @@ public class Dump extends HttpServlet
                     request.setAttribute("RESUME",Boolean.TRUE);
 
                     final long resume=Long.parseLong(request.getParameter("dispatch"));
-            if (resume==0)
-                async.dispatch();
-            else
-            {
-            _timer.schedule(new TimerTask()
-            {
-                @Override
-                public void run()
-                {
-                async.dispatch();
-                }
-            },resume);
-            }
+                    if (resume==0)
+                        async.dispatch();
+                    else
+                    {
+                        _timer.schedule(new TimerTask()
+                        {
+                            @Override
+                            public void run()
+                            {
+                                async.dispatch();
+                            }
+                        },resume);
+                    }
                 }
 
                 if (request.getParameter("complete")!=null)
                 {
                     final long complete=Long.parseLong(request.getParameter("complete"));
-            if (complete==0)
-                async.complete();
-            else
-            {
-            _timer.schedule(new TimerTask()
-            {
-                @Override
-                public void run()
-                {
-                try
-                {
-                    response.setContentType("text/html");
-                    response.getOutputStream().println("<h1>COMPLETED</h1>");
-                    async.complete();
+                    if (complete==0)
+                        async.complete();
+                    else
+                    {
+                        _timer.schedule(new TimerTask()
+                        {
+                            @Override
+                            public void run()
+                            {
+                                try
+                                {
+                                    response.setContentType("text/html");
+                                    response.getOutputStream().println("<h1>COMPLETED</h1>");
+                                    async.complete();
+                                }
+                                catch(Exception e)
+                                {
+                                    e.printStackTrace();
+                                }
+                            }
+                        },complete);
+                    }
                 }
-                catch(Exception e)
-                {
-                    e.printStackTrace();
-                }
-                }
-            },complete);
-            }
-                }
-                
+
                 return;
             }
             catch(Exception e)
@@ -301,7 +291,7 @@ public class Dump extends HttpServlet
             try
             {
                 throw (Throwable) Thread.currentThread().getContextClassLoader()
-                    .loadClass(info.substring(1)).getDeclaredConstructor().newInstance();
+                        .loadClass(info.substring(1)).getDeclaredConstructor().newInstance();
             }
             catch (Throwable th)
             {
@@ -461,7 +451,14 @@ public class Dump extends HttpServlet
             pout.write("<td>"+context.getServletContextName()+"</td>");
             pout.write("</tr><tr>\n");
             pout.write("<th align=\"right\">context.getVirtualServerName():&nbsp;</th>");
-            pout.write("<td>"+context.getVirtualServerName()+"</td>");
+            try
+            {
+                pout.write("<td>" + context.getVirtualServerName() + "</td>");
+            }
+            catch(Throwable th)
+            {
+                pout.write("<td>" + th + "</td>");
+            }
             pout.write("</tr><tr>\n");
             pout.write("<th align=\"right\">context.getDefaultSessionTrackingModes():&nbsp;</th>");
             pout.write("<td>"+context.getDefaultSessionTrackingModes()+"</td>");
@@ -474,7 +471,6 @@ public class Dump extends HttpServlet
             pout.write("</tr>");
 
             pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Request:</big></th>");
-
 
             pout.write("<tr>\n");
             pout.write("<th align=\"right\">getContentLength:&nbsp;</th>");
@@ -566,17 +562,10 @@ public class Dump extends HttpServlet
             pout.write("</tr><tr>\n");
             pout.write("<th align=\"right\">encodeRedirectURL(/foo?bar):&nbsp;</th>");
             pout.write("<td>"+response.encodeRedirectURL("/foo?bar")+"</td>");
+            pout.write("</tr>\n");
 
-
-            Enumeration<Locale> locales= request.getLocales();
-            while (locales.hasMoreElements())
-            {
-                pout.write("</tr><tr>\n");
-                pout.write("<th align=\"right\">getLocales:&nbsp;</th>");
-                pout.write("<td>"+locales.nextElement()+"</td>");
-            }
-            pout.write("</tr><tr>\n");
-
+            /* ----------- */
+            pout.write("<tr>\n");
             pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Other HTTP Headers:</big></th>");
             Enumeration<String> h= request.getHeaderNames();
             String name;
@@ -593,8 +582,64 @@ public class Dump extends HttpServlet
                     pout.write("<td>"+notag(hv)+"</td>");
                 }
             }
+            pout.write("</tr>\n");
 
-            pout.write("</tr><tr>\n");
+            /* ----------- */
+            pout.write("<tr>\n");
+            pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Servlets:</big></th>");
+
+            Map<String, ? extends ServletRegistration> servletRegistrations = request.getServletContext().getServletRegistrations();
+            for (String servlet : servletRegistrations.keySet())
+            {
+                pout.write("<tr>\n");
+                pout.write("<th align=\"right\" valign=\"top\">"+servlet+":&nbsp;</th>");
+                ServletRegistration r = servletRegistrations.get(servlet);
+                pout.write("<td><pre>" + r.getClassName() + "\n" +
+                        r.getInitParameters() + "\n" +
+                        r.getMappings() + "</pre></td>");
+                pout.write("</tr><tr>\n");
+            }
+
+            /* ----------- */
+            pout.write("</tr>\n");
+            pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Filters:</big></th>");
+
+            Map<String, ? extends FilterRegistration> filterRegistrations = request.getServletContext().getFilterRegistrations();
+            for (String filter : filterRegistrations.keySet())
+            {
+                pout.write("<tr>\n");
+                pout.write("<th align=\"right\" valign=\"top\">"+filter+":&nbsp;</th>");
+                FilterRegistration r = filterRegistrations.get(filter);
+                pout.write("<td><pre>" + r.getClassName() + "\n" +
+                        r.getInitParameters() + "\n" +
+                        r.getUrlPatternMappings() + "\n" +
+                        r.getServletNameMappings() + "</pre></td>");
+                pout.write("</tr><tr>\n");
+            }
+
+            /* ----------- */
+            pout.write("</tr>\n");
+            pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Dispatchers:</big></th>");
+            pout.write("<tr>\n");
+            pout.write("<th align=\"right\">jsp:&nbsp;</th>");
+            pout.write("<td>"+request.getServletContext().getNamedDispatcher("jsp")+"</td>");
+            pout.write("</tr>\n");
+            pout.write("<tr>\n");
+            pout.write("<th align=\"right\">default:&nbsp;</th>");
+            pout.write("<td>"+request.getServletContext().getNamedDispatcher("default")+"</td>");
+            pout.write("</tr>\n");
+
+            /* ----------- */
+            pout.write("<tr><th align=\"left\" colspan=\"2\"><big><br/>Locales:</big></th></tr>");
+            Enumeration<Locale> locales= request.getLocales();
+            while (locales.hasMoreElements())
+            {
+                pout.write("<tr>\n");
+                pout.write("<th align=\"right\">getLocales:&nbsp;</th>");
+                pout.write("<td>"+locales.nextElement()+"</td></tr>");
+            }
+
+            pout.write("<tr>\n");
             pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Request Parameters:</big></th>");
             h= request.getParameterNames();
             while (h.hasMoreElements())
@@ -641,7 +686,7 @@ public class Dump extends HttpServlet
                 pout.write("</tr><tr>\n");
                 pout.write("<th align=\"left\" colspan=\"2\"><big><br/>No Parts!</big></th>");
             }
-            
+
             pout.write("</tr><tr>\n");
             pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Cookies:</big></th>");
             Cookie[] cookies = request.getCookies();
@@ -656,8 +701,8 @@ public class Dump extends HttpServlet
 
             String content_type=request.getContentType();
             if (content_type!=null &&
-                !content_type.startsWith("application/x-www-form-urlencoded") &&
-                !content_type.startsWith("multipart/form-data"))
+                    !content_type.startsWith("application/x-www-form-urlencoded") &&
+                    !content_type.startsWith("multipart/form-data"))
             {
                 pout.write("</tr><tr>\n");
                 pout.write("<th align=\"left\" valign=\"top\" colspan=\"2\"><big><br/>Content:</big></th>");
@@ -849,7 +894,7 @@ public class Dump extends HttpServlet
                     pout.write("</tr><tr>\n");
                     pout.write("<th align=\"right\">getServletContext().getContext(...).getRequestDispatcher(...):&nbsp;</th>");
                     pout.write("<td>"+ctx.getRequestDispatcher(res.substring(cp.length()))+"</td>");
-                    
+
                     pout.write("</tr><tr>\n");
                     pout.write("<th align=\"right\">getServletContext().getContext(...).getRealPath(...):&nbsp;</th>");
                     pout.write("<td>"+ctx.getRealPath(res.substring(cp.length()))+"</td>");
@@ -873,10 +918,23 @@ public class Dump extends HttpServlet
                     pout.write("<td>null</td>");
                 else
                     pout.write("<td>"+Collections.list(urls)+"</td>");
-
             }
 
             pout.write("</tr></table>\n");
+
+            /* ------------------------------------------------------------ */
+            pout.write("<h2>Application Classloader</h2>\n<pre>");
+            pout.write(dumpClassLoader("  ", this.getClass().getClassLoader()));
+            pout.write("</pre>\n");
+            pout.write("<h2>Servlet Container Classloader</h2>\n<pre>");
+            pout.write(dumpClassLoader("  ", HttpServletRequest.class.getClassLoader()));
+            pout.write("</pre>\n");
+            pout.write("<h2>JVM Classloader</h2>\n<pre>");
+            pout.write(dumpClassLoader("  ", String.class.getClassLoader()));
+            pout.write("</pre>\n");
+            pout.write("<h2>Thread context Classloader</h2>\n<pre>");
+            pout.write(Thread.currentThread().getContextClassLoader().toString());
+            pout.write("</pre>\n");
 
             /* ------------------------------------------------------------ */
             pout.write("<h2>Stack</h2>\n<pre>");
@@ -950,11 +1008,11 @@ public class Dump extends HttpServlet
             }
         }
 
-    pout.write("<h2>Async links</h2><ul>");
-    pout.write("<li><a href=\".?async=5000\">Async wait 5s then timeout</a></li>");
-    pout.write("<li><a href=\".?async=5000&dispatch=4000\">Async wait 4s then dispatch</a></li>");
-    pout.write("<li><a href=\".?async=5000&complete=4000\">Async wait 4s then complete</a></li>");
-    pout.write("<li><a href=\".?async=5000&complete=0\">Async start then complete</a></li>");
+        pout.write("<h2>Async links</h2><ul>");
+        pout.write("<li><a href=\".?async=5000\">Async wait 5s then timeout</a></li>");
+        pout.write("<li><a href=\".?async=5000&dispatch=4000\">Async wait 4s then dispatch</a></li>");
+        pout.write("<li><a href=\".?async=5000&complete=4000\">Async wait 4s then complete</a></li>");
+        pout.write("<li><a href=\".?async=5000&complete=0\">Async start then complete</a></li>");
 
         pout.write("</body>\n</html>\n");
 
@@ -969,8 +1027,28 @@ public class Dump extends HttpServlet
             if ("/ex6".equals(pi))
                 throw new UnavailableException("test ex6");
         }
+    }
 
+    private String dumpClassLoader(String indent, ClassLoader loader)
+    {
+        if (loader==null)
+            return indent+"null";
 
+        StringBuilder out = new StringBuilder();
+
+        out.append(indent).append(loader.toString()).append(" : ").append(loader.getClass()).append("\n");
+        if (loader instanceof URLClassLoader)
+        {
+            URL[] urls = ((URLClassLoader)loader).getURLs();
+            if (urls!=null)
+            {
+                for (URL url: urls)
+                    out.append(indent).append("+-").append(url.toString()).append("\n");
+            }
+        }
+
+        out.append(dumpClassLoader(indent+"  ", loader.getParent()));
+        return out.toString();
     }
 
 
