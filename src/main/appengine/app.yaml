@@ -3,8 +3,12 @@ runtime: custom
 env: flex
 
 manual_scaling:
-  instances: 1
+  instances: 2
 
 env_variables:
   JETTY_ARGS: -Djava.util.logging.config.file=WEB-INF/logging.properties
+  JETTY_MODULES_ENABLE: gcp-datastore-sessions
 
+handlers:
+  - url: /.*
+    script: this field is required, but ignored

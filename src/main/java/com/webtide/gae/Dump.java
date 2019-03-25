@@ -26,6 +26,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
+import javax.servlet.http.HttpSession;
 import javax.servlet.http.Part;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -585,39 +586,6 @@ public class Dump extends HttpServlet
             pout.write("</tr>\n");
 
             /* ----------- */
-            pout.write("<tr>\n");
-            pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Servlets:</big></th>");
-
-            Map<String, ? extends ServletRegistration> servletRegistrations = request.getServletContext().getServletRegistrations();
-            for (String servlet : servletRegistrations.keySet())
-            {
-                pout.write("<tr>\n");
-                pout.write("<th align=\"right\" valign=\"top\">"+servlet+":&nbsp;</th>");
-                ServletRegistration r = servletRegistrations.get(servlet);
-                pout.write("<td><pre>" + r.getClassName() + "\n" +
-                        r.getInitParameters() + "\n" +
-                        r.getMappings() + "</pre></td>");
-                pout.write("</tr><tr>\n");
-            }
-
-            /* ----------- */
-            pout.write("</tr>\n");
-            pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Filters:</big></th>");
-
-            Map<String, ? extends FilterRegistration> filterRegistrations = request.getServletContext().getFilterRegistrations();
-            for (String filter : filterRegistrations.keySet())
-            {
-                pout.write("<tr>\n");
-                pout.write("<th align=\"right\" valign=\"top\">"+filter+":&nbsp;</th>");
-                FilterRegistration r = filterRegistrations.get(filter);
-                pout.write("<td><pre>" + r.getClassName() + "\n" +
-                        r.getInitParameters() + "\n" +
-                        r.getUrlPatternMappings() + "\n" +
-                        r.getServletNameMappings() + "</pre></td>");
-                pout.write("</tr><tr>\n");
-            }
-
-            /* ----------- */
             pout.write("</tr>\n");
             pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Dispatchers:</big></th>");
             pout.write("<tr>\n");
@@ -723,8 +691,10 @@ public class Dump extends HttpServlet
 
                 pout.write("</pre></td>");
             }
+            pout.write("</tr>\n");
 
-            pout.write("</tr><tr>\n");
+            /* ---- */
+            pout.write("<tr>\n");
             pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Request Attributes:</big></th>");
             Enumeration<String> a= request.getAttributeNames();
             while (a.hasMoreElements())
@@ -742,9 +712,32 @@ public class Dump extends HttpServlet
                     pout.write("<td>"+"<pre>" + toString(request.getAttribute(name)) + "</pre>"+"</td>");
             }
             request.setAttribute("org.eclipse.jetty.servlet.MultiPartFilter.files",null);
+            pout.write("</tr>\n");
 
+            /* ---- */
+            pout.write("<tr>\n");
+            HttpSession session = request.getSession(false);
+            if (session==null)
+                pout.write("<th align=\"left\" colspan=\"2\"><big><br/>No Session Attributes!</big></th>");
+            else
+                pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Session "+session.getId()+" Attributes:</big></th>");
+            pout.write("</tr>\n");
 
-            pout.write("</tr><tr>\n");
+            /* ---- */
+            pout.write("<tr>\n");
+            a= session.getAttributeNames();
+            while (a.hasMoreElements())
+            {
+                name= (String)a.nextElement();
+                pout.write("</tr><tr>\n");
+                pout.write("<th align=\"right\" valign=\"top\">"+name.replace("."," .")+":&nbsp;</th>");
+                Object value=session.getAttribute(name);
+                pout.write("<td>"+"<pre>" + toString(request.getAttribute(name)) + "</pre>"+"</td>");
+            }
+            pout.write("</tr>\n");
+
+            /* ---- */
+            pout.write("<tr>\n");
             pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Servlet InitParameters:</big></th>");
             a= getInitParameterNames();
             while (a.hasMoreElements())
@@ -754,8 +747,10 @@ public class Dump extends HttpServlet
                 pout.write("<th align=\"right\">"+name+":&nbsp;</th>");
                 pout.write("<td>"+ toString(getInitParameter(name)) +"</td>");
             }
+            pout.write("</tr>\n");
 
-            pout.write("</tr><tr>\n");
+            /* ---- */
+            pout.write("<tr>\n");
             pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Context InitParameters:</big></th>");
             a= getServletContext().getInitParameterNames();
             while (a.hasMoreElements())
@@ -765,8 +760,10 @@ public class Dump extends HttpServlet
                 pout.write("<th align=\"right\" valign=\"top\">"+name.replace("."," .")+":&nbsp;</th>");
                 pout.write("<td>"+ toString(getServletContext().getInitParameter(name)) + "</td>");
             }
+            pout.write("</tr>\n");
 
-            pout.write("</tr><tr>\n");
+            /* ---- */
+            pout.write("<tr>\n");
             pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Context Attributes:</big></th>");
             a= getServletContext().getAttributeNames();
             while (a.hasMoreElements())
@@ -806,9 +803,43 @@ public class Dump extends HttpServlet
                 else
                     rsw=null;
             }
+            pout.write("</tr>\n");
+
+            /* ----------- */
+            pout.write("<tr>\n");
+            pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Servlets:</big></th>");
+
+            Map<String, ? extends ServletRegistration> servletRegistrations = request.getServletContext().getServletRegistrations();
+            for (String servlet : servletRegistrations.keySet())
+            {
+                pout.write("<tr>\n");
+                pout.write("<th align=\"right\" valign=\"top\">"+servlet+":&nbsp;</th>");
+                ServletRegistration r = servletRegistrations.get(servlet);
+                pout.write("<td><pre>" + r.getClassName() + "\n" +
+                        r.getInitParameters() + "\n" +
+                        r.getMappings() + "</pre></td>");
+                pout.write("</tr><tr>\n");
+            }
+
+            /* ----------- */
+            pout.write("</tr>\n");
+            pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Filters:</big></th>");
+
+            Map<String, ? extends FilterRegistration> filterRegistrations = request.getServletContext().getFilterRegistrations();
+            for (String filter : filterRegistrations.keySet())
+            {
+                pout.write("<tr>\n");
+                pout.write("<th align=\"right\" valign=\"top\">"+filter+":&nbsp;</th>");
+                FilterRegistration r = filterRegistrations.get(filter);
+                pout.write("<td><pre>" + r.getClassName() + "\n" +
+                        r.getInitParameters() + "\n" +
+                        r.getUrlPatternMappings() + "\n" +
+                        r.getServletNameMappings() + "</pre></td>");
+                pout.write("</tr>\n");
+            }
 
             /* ------------------------------------------------------------ */
-            pout.write("</tr><tr>\n");
+            pout.write("<tr>\n");
             pout.write("<th align=\"left\" colspan=\"2\"><big><br/>System Properties:</big></th>");
             Enumeration p = System.getProperties().propertyNames();
             while (p.hasMoreElements())

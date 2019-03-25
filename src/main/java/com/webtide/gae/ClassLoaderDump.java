@@ -18,18 +18,22 @@
 
 package com.webtide.gae;
 
-import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.concurrent.TimeUnit;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
+import java.util.ServiceLoader;
+
+import com.google.cloud.logging.LoggingFactory;
+import com.google.cloud.logging.LoggingOptions;
 
 /**
  * Test Servlet Cookies.
@@ -40,54 +44,122 @@ public class ClassLoaderDump extends HttpServlet
 {
     /* ------------------------------------------------------------ */
     @Override
-    public void doGet(HttpServletRequest request,
-                      HttpServletResponse response)
-        throws ServletException, IOException
+    public void doGet(HttpServletRequest request, HttpServletResponse response)
+        throws ServletException
     {
-        response.setContentType("text/html");
-
-        PrintWriter out = response.getWriter();
-        out.println("<h1>ClassLoader Dump Servlet:</h1>");
-        out.println("<a href=\"/\">home</a><br/>");
-
-        if (request.getPathInfo()!=null)
+        try
         {
+            response.setContentType("text/html");
+
+            PrintWriter out = response.getWriter();
+            out.println("<h1>ClassLoader Dump Servlet:</h1>");
+            out.println("<a href=\"/\">home</a><br/>");
+
+            out.println("<h3>Thread Context Loader:" + Thread.currentThread().getContextClassLoader() + "</h3>");
+
+            if (request.getPathInfo() != null)
+            {
+                try
+                {
+                    Class<?> info = Thread.currentThread().getContextClassLoader().loadClass(request.getPathInfo().substring(1));
+                    dump("Info", out, info);
+                }
+                catch (Throwable th)
+                {
+                    out.println("<h3>Could not load " + request.getPathInfo() + ":</h3>");
+                    out.println("<pre>");
+                    th.printStackTrace(out);
+                    out.println("</pre>");
+                }
+            }
+
+            Class<?> jre = String.class;
+            dump("JRE", out, jre);
+
+            Class<?> context = request.getServletContext().getClass();
+            dump("Container",out, context);
+
+            Class<?> webapp = this.getClass();
+            dump("WebApp", out, webapp);
+
+            Class<?> servlet = ServletException.class;
+            dump("Servlet API", out, servlet);
+
+            Class<?> google = com.google.appengine.api.utils.SystemProperty.class;
+            dump("Google API", out, google);
+
+            Class<?> gcloud = LoggingOptions.class;
+            dump("App GCloud API", out, gcloud);
+            out.println("<p>Version of " + gcloud.getClass() + ":" +
+                gcloud.getPackage().getImplementationVersion() + "</h3>");
+
+            Class<?> dgcloud = LoggingOptions.getDefaultInstance().getClass();
+            dump("App Default GCloud API", out, dgcloud);
+            out.println("<p>Version of " + dgcloud.getClass() + ":" +
+                    dgcloud.getPackage().getImplementationVersion() + "</h3>");
+
+            Class<?> cgcloud = null;
             try
             {
-                Class<?> info = Thread.currentThread().getContextClassLoader().loadClass(request.getPathInfo().substring(1));
-                out.println("<h3>Loader for:"+info+"</h3>");
-                dump(out,info.getClassLoader());
+                cgcloud = request.getServletContext().getClass().getClassLoader().loadClass("com.google.cloud.logging.LoggingOptions");
+                dump("Container GCloud API", out, cgcloud);
+                out.println("<p>Version of " + cgcloud.getClass() + ":" +
+                        cgcloud.getPackage().getImplementationVersion() + "</h3>");
             }
-            catch (Throwable th)
+            catch(Exception e)
             {
-                out.println("<h3>Could not load "+request.getPathInfo()+":</h3>");
-                out.println("<pre>");
-                th.printStackTrace(out);
+                out.println("<h3>Container GCloud API</h3>\n<p>not found:" + e + "</p>\n");
+            }
+
+            Class<?> dgcloudSvc = LoggingOptions.getDefaultInstance().getService().getClass();
+            dump("App Default GCloud Service", out, dgcloudSvc);
+            out.println("<p>Version from package " + dgcloudSvc.getClass() + ":" +
+                    dgcloudSvc.getPackage().getImplementationVersion() + "</h3>");
+
+            out.printf("<h4>Service Loader: %s</h4>%n", LoggingFactory.class);
+            dump("WebApp", out, dgcloud);
+            out.println("<pre>");
+            try
+            {
+                Class<?> factory = LoggingFactory.class;
+                ServiceLoader loader = ServiceLoader.load(factory);
+                for (Object o : loader)
+                {
+                    out.printf("service %s of %s loader from %s%n",o, o.getClass(), getLocationOfClass(o.getClass()));
+                }
+            }
+            catch(Exception e)
+            {
+                e.printStackTrace(out);
+            }
+            finally
+            {
                 out.println("</pre>");
             }
         }
+        catch(Exception e)
+        {
+            throw new ServletException(e);
+        }
+    }
 
-        Class<?> jre = String.class;
-        out.println("<h3>JRE Loader for:"+jre+"</h3>");
-        dump(out,jre.getClassLoader());
 
-        Class<?> webapp = this.getClass();
-        out.println("<h3>WebApp Loader for:"+webapp+"</h3>");
-        dump(out,webapp.getClassLoader());
-
-        out.println("<h3>Thread Context Loader for:"+Thread.currentThread()+"</h3>");
-        dump(out,Thread.currentThread().getContextClassLoader());
-
-        Class<?> container = ServletException.class;
-        out.println("<h3>Container Loader for:"+container+"</h3>");
-        dump(out,container.getClassLoader());
-
-        Class<?> google = com.google.appengine.api.utils.SystemProperty.class;
-        out.println("<h3>Google Loader for:"+google+"</h3>");
-        dump(out,google.getClassLoader());
+    private void dump(String scope, PrintWriter out, Class<?> clazz) throws URISyntaxException
+    {
+        if (clazz!=null)
+        {
+            out.printf("<h3>%s: class %s</h3>%n<p>Loaded from %s</p>%n",
+                    scope, clazz.getName(), getLocationOfClass(clazz));
+            dump(out,clazz.getClassLoader(),"!WebApp".equals(scope));
+        }
     }
 
     private void dump(PrintWriter out, ClassLoader loader)
+    {
+        dump(out,loader, false);
+    }
+
+    private void dump(PrintWriter out, ClassLoader loader, boolean webapp)
     {
         if (loader==null)
         {
@@ -95,7 +167,13 @@ public class ClassLoaderDump extends HttpServlet
             return;
         }
 
-        out.println(loader);
+        if (!webapp && loader==this.getClass().getClassLoader())
+        {
+            out.println("WEBAPP LOADER<br/>");
+            return;
+        }
+
+        out.printf("<p>Loader: %s</p>%n", loader);
         out.println("<ul>");
         if (loader instanceof URLClassLoader)
         {
@@ -111,5 +189,56 @@ public class ClassLoaderDump extends HttpServlet
         out.println("</ul>");
     }
 
+    /* ------------------------------------------------------------ */
+    public static URI getLocationOfClass(Class<?> clazz) throws URISyntaxException
+    {
+        ProtectionDomain domain = clazz.getProtectionDomain();
+        if (domain != null)
+        {
+            CodeSource source = domain.getCodeSource();
+            if (source != null)
+            {
+                URL location = source.getLocation();
 
+                if (location != null)
+                    return location.toURI();
+            }
+        }
+
+        String resourceName = clazz.getName().replace('.', '/') + ".class";
+        ClassLoader loader = clazz.getClassLoader();
+        URL url = (loader == null ? ClassLoader.getSystemClassLoader() : loader).getResource(resourceName);
+        if (url != null)
+        {
+            return getJarSource(url.toURI());
+        }
+        return null;
+    }
+
+    public static URI getJarSource(URI uri)
+    {
+        try
+        {
+            if (!"jar".equals(uri.getScheme()))
+                return uri;
+            // Get SSP (retaining encoded form)
+            String s = uri.getRawSchemeSpecificPart();
+            int bang_slash = s.indexOf("!/");
+            if (bang_slash>=0)
+                s=s.substring(0,bang_slash);
+            return new URI(s);
+        }
+        catch(URISyntaxException e)
+        {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+    public static String getJarSource(String uri)
+    {
+        if (!uri.startsWith("jar:"))
+            return uri;
+        int bang_slash = uri.indexOf("!/");
+        return (bang_slash>=0)?uri.substring(4,bang_slash):uri.substring(4);
+    }
 }
