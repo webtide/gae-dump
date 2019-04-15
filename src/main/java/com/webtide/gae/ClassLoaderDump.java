@@ -50,12 +50,21 @@ public class ClassLoaderDump extends HttpServlet
         try
         {
             response.setContentType("text/html");
-
             PrintWriter out = response.getWriter();
             out.println("<h1>ClassLoader Dump Servlet:</h1>");
             out.println("<a href=\"/\">home</a><br/>");
-
             out.println("<h3>Thread Context Loader:" + Thread.currentThread().getContextClassLoader() + "</h3>");
+
+            out.println("<h2>ClassLoader Dumps</h3>");
+            out.println("<h3>WebApp ClassLoader:</h3>");
+            dumpLoader(out,this.getClass().getClassLoader());
+            out.println("<h3>Container ClassLoader:</h3>");
+            dumpLoader(out,request.getServletContext().getClass().getClassLoader());
+            out.println("<h3>JVM ClassLoader:</h3>");
+            dumpLoader(out,String.class.getClassLoader());
+
+
+            out.println("<h2>ClassLoader Examples</h3>");
 
             if (request.getPathInfo() != null)
             {
@@ -77,7 +86,7 @@ public class ClassLoaderDump extends HttpServlet
             dump("JRE", out, jre);
 
             Class<?> context = request.getServletContext().getClass();
-            dump("Container",out, context);
+            dump("Container", out, context);
 
             Class<?> webapp = this.getClass();
             dump("WebApp", out, webapp);
@@ -90,21 +99,15 @@ public class ClassLoaderDump extends HttpServlet
 
             Class<?> gcloud = LoggingOptions.class;
             dump("App GCloud API", out, gcloud);
-            out.println("<p>Version of " + gcloud.getClass() + ":" +
-                gcloud.getPackage().getImplementationVersion() + "</h3>");
 
             Class<?> dgcloud = LoggingOptions.getDefaultInstance().getClass();
             dump("App Default GCloud API", out, dgcloud);
-            out.println("<p>Version of " + dgcloud.getClass() + ":" +
-                    dgcloud.getPackage().getImplementationVersion() + "</h3>");
 
             Class<?> cgcloud = null;
             try
             {
                 cgcloud = request.getServletContext().getClass().getClassLoader().loadClass("com.google.cloud.logging.LoggingOptions");
                 dump("Container GCloud API", out, cgcloud);
-                out.println("<p>Version of " + cgcloud.getClass() + ":" +
-                        cgcloud.getPackage().getImplementationVersion() + "</h3>");
             }
             catch(Exception e)
             {
@@ -113,11 +116,11 @@ public class ClassLoaderDump extends HttpServlet
 
             Class<?> dgcloudSvc = LoggingOptions.getDefaultInstance().getService().getClass();
             dump("App Default GCloud Service", out, dgcloudSvc);
-            out.println("<p>Version from package " + dgcloudSvc.getClass() + ":" +
-                    dgcloudSvc.getPackage().getImplementationVersion() + "</h3>");
 
-            out.printf("<h4>Service Loader: %s</h4>%n", LoggingFactory.class);
-            dump("WebApp", out, dgcloud);
+            dump("WebApp", out, LoggingFactory.class);
+
+            out.printf("<h2>Service Loader: %s</h2>%n", LoggingFactory.class);
+
             out.println("<pre>");
             try
             {
@@ -143,50 +146,36 @@ public class ClassLoaderDump extends HttpServlet
         }
     }
 
-
     private void dump(String scope, PrintWriter out, Class<?> clazz) throws URISyntaxException
     {
         if (clazz!=null)
         {
-            out.printf("<h3>%s: class %s</h3>%n<p>Loaded from %s</p>%n",
-                    scope, clazz.getName(), getLocationOfClass(clazz));
-            dump(out,clazz.getClassLoader(),"!WebApp".equals(scope));
+            out.printf("<h3>%s: class %s</h3>%n", scope, clazz.getName());
+            out.printf("<p>Loaded from %s</p>%n", getLocationOfClass(clazz));
+            out.printf("<p>Package Implementation version %s</p>%n", clazz.getPackage().getImplementationVersion());
+            out.printf("<p>Package Info %s</p>%n", clazz.getPackage());
         }
     }
 
-    private void dump(PrintWriter out, ClassLoader loader)
+    private void dumpLoader(PrintWriter out, ClassLoader loader)
     {
-        dump(out,loader, false);
-    }
-
-    private void dump(PrintWriter out, ClassLoader loader, boolean webapp)
-    {
-        if (loader==null)
-        {
-            out.println("SYSTEM LOADER<br/>");
-            return;
-        }
-
-        if (!webapp && loader==this.getClass().getClassLoader())
-        {
-            out.println("WEBAPP LOADER<br/>");
-            return;
-        }
-
         out.printf("<p>Loader: %s</p>%n", loader);
-        out.println("<ul>");
-        if (loader instanceof URLClassLoader)
+        if (loader!=null)
         {
-            for (URL url : ((URLClassLoader)loader).getURLs())
-                out.println("<li>"+url+"</li>");
+            out.println("<ul>");
+            if (loader instanceof URLClassLoader)
+            {
+                for (URL url : ((URLClassLoader)loader).getURLs())
+                    out.println("<li>" + url + "</li>");
+            }
+            if (loader.getParent() != null)
+            {
+                out.println("<li>");
+                dumpLoader(out, loader.getParent());
+                out.println("</li>");
+            }
+            out.println("</ul>");
         }
-        if (loader.getParent()!=null)
-        {
-            out.println("<li>");
-            dump(out,loader.getParent());
-            out.println("</li>");
-        }
-        out.println("</ul>");
     }
 
     /* ------------------------------------------------------------ */

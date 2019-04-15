@@ -718,21 +718,20 @@ public class Dump extends HttpServlet
             pout.write("<tr>\n");
             HttpSession session = request.getSession(false);
             if (session==null)
-                pout.write("<th align=\"left\" colspan=\"2\"><big><br/>No Session Attributes!</big></th>");
+                pout.write("<th align=\"left\" colspan=\"2\"><big><br/>No Session Attributes!</big></th></tr>");
             else
-                pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Session "+session.getId()+" Attributes:</big></th>");
-            pout.write("</tr>\n");
-
-            /* ---- */
-            pout.write("<tr>\n");
-            a= session.getAttributeNames();
-            while (a.hasMoreElements())
             {
-                name= (String)a.nextElement();
-                pout.write("</tr><tr>\n");
-                pout.write("<th align=\"right\" valign=\"top\">"+name.replace("."," .")+":&nbsp;</th>");
-                Object value=session.getAttribute(name);
-                pout.write("<td>"+"<pre>" + toString(request.getAttribute(name)) + "</pre>"+"</td>");
+                pout.write("<th align=\"left\" colspan=\"2\"><big><br/>Session Attributes:</big></th></tr>");
+                pout.write("<tr><th align=\"right\" valign=\"top\">id:&nbsp;</th>");
+                pout.write("<td>"+"<pre>" + session.getId() + "</pre>"+"</td></tr>");
+                a = session.getAttributeNames();
+                while (a.hasMoreElements())
+                {
+                    name= (String)a.nextElement();
+                    pout.write("<tr><th align=\"right\" valign=\"top\">"+name.replace("."," .")+":&nbsp;</th>");
+                    Object value=session.getAttribute(name);
+                    pout.write("<td>"+"<pre>" + toString(request.getAttribute(name)) + "</pre>"+"</td></tr>");
+                }
             }
             pout.write("</tr>\n");
 
