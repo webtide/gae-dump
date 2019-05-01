@@ -47,10 +47,15 @@ public class JettyDump extends HttpServlet
 
             PrintWriter out = response.getWriter();
             out.println("<h1>Jetty Dump Servlet:</h1>");
-            out.println("<a href=\"/\">home</a><br/>");
             out.println("<pre>");
-
             ServletContext context = request.getServletContext();
+
+            Class<?> jetty = context.getClass().getClassLoader().loadClass("org.eclipse.jetty.util.Jetty");
+            String version = jetty.getField("VERSION").get(null).toString();
+            String hash = jetty.getField("GIT_HASH").get(null).toString();
+            String timestamp = jetty.getField("BUILD_TIMESTAMP").get(null).toString();
+            out.printf("Jetty %s (%s @ %s)%n%n", version, hash, timestamp);
+
             Method method = context.getClass().getMethod("getContextHandler");
             Object handler = method.invoke(context);
             method = handler.getClass().getMethod("getServer");
@@ -59,7 +64,6 @@ public class JettyDump extends HttpServlet
             out.println(method.invoke(server));
 
             out.println("</pre>");
-
         }
         catch(Exception e)
         {
