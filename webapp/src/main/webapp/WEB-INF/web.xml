@@ -63,6 +63,7 @@
   </env-entry>
   -->
 
+  <!-- auth not available on flex
   <security-constraint>
     <web-resource-collection>
       <web-resource-name>Admin Role</web-resource-name>
@@ -131,6 +132,7 @@
       <transport-guarantee>CONFIDENTIAL</transport-guarantee>
     </user-data-constraint>
   </security-constraint>
+  -->
 
   <servlet>
      <servlet-name>foo.jsp</servlet-name>
