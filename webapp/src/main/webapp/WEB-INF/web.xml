@@ -83,13 +83,6 @@
   </security-role>
 
 
-<!--
-  <login-config>
-    <auth-method>BASIC</auth-method>
-    <realm-name>Test Realm</realm-name>
-  </login-config>
--->
-
   <login-config>
     <auth-method>FORM</auth-method>
     <realm-name>Test Realm</realm-name>
@@ -103,7 +96,6 @@
     </form-login-config>
   </login-config>
 
-  
   <security-constraint>
     <web-resource-collection>
       <web-resource-name>Auth</web-resource-name>
@@ -116,18 +108,18 @@
 
   <security-constraint>
     <web-resource-collection>
-      <web-resource-name>relax</web-resource-name>
-      <url-pattern>/authenticated/relax/*</url-pattern>
-      <url-pattern>/authenticated/relax.txt</url-pattern>
-    </web-resource-collection>
-  </security-constraint>
-
-  <security-constraint>
-    <web-resource-collection>
       <web-resource-name>Forbidden</web-resource-name>
       <url-pattern>/forbidden/*</url-pattern>
     </web-resource-collection>
     <auth-constraint/>
+  </security-constraint>
+
+  <security-constraint>
+    <web-resource-collection>
+      <web-resource-name>relax</web-resource-name>
+      <url-pattern>/authenticated/relax/*</url-pattern>
+      <url-pattern>/authenticated/relax.txt</url-pattern>
+    </web-resource-collection>
   </security-constraint>
 
   <security-constraint>
