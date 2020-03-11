@@ -111,6 +111,26 @@ public class ClassLoaderDump extends HttpServlet
                 out.println("<h3>Container GCloud API</h3>\n<p>not found:" + e + "</p>\n");
             }
 
+            try
+            {
+                Class<?> jetty = request.getServletContext().getClass().getClassLoader().loadClass("org.eclipse.jetty.servlet.DefaultServlet");
+                dump("<h3>Jetty Servlet from container</h3>", out, jetty);
+            }
+            catch(Exception e)
+            {
+                out.println("<h3>Jetty Servlet from container</h3>\n<p>not found:" + e + "</p>\n");
+            }
+
+            try
+            {
+                Class<?> jetty = Thread.currentThread().getContextClassLoader().loadClass("org.eclipse.jetty.servlet.DefaultServlet");
+                dump("<h3>Jetty Servlet from context</h3>", out, jetty);
+            }
+            catch(Exception e)
+            {
+                out.println("<h3>Jetty Servlet from context</h3>\n<p>not found:" + e + "</p>\n");
+            }
+
             Class<?> dgcloudSvc = LoggingOptions.getDefaultInstance().getService().getClass();
             dump("App Default GCloud Service", out, dgcloudSvc);
 
