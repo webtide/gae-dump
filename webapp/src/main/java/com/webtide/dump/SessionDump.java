@@ -18,6 +18,8 @@
 
 package com.webtide.dump;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -30,12 +32,14 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Date;
 import java.util.Enumeration;
+import javax.servlet.http.HttpSessionBindingEvent;
+import javax.servlet.http.HttpSessionEvent;
 
 /** 
  * Test Servlet Sessions.
  */
 @SuppressWarnings("serial")
-@WebServlet(name = "Session", value = "/session")
+@WebServlet(name = "Session", value = "/session", loadOnStartup = 1)
 public class SessionDump extends HttpServlet
 {
     /** 
@@ -56,9 +60,51 @@ public class SessionDump extends HttpServlet
         }
     }
 
+    public static class Listener implements javax.servlet.http.HttpSessionAttributeListener, javax.servlet.http.HttpSessionListener
+    {
+        public List<Object> history = new CopyOnWriteArrayList<>();
+
+        @Override
+        public void attributeAdded(HttpSessionBindingEvent event)
+        {
+            history.add(String.format("attrAdded %s %s=%s", event.getSession().getId(), event.getName(), event.getValue()));
+        }
+
+        @Override
+        public void attributeRemoved(HttpSessionBindingEvent event)
+        {
+            history.add(String.format("attrRemoved %s %s=%s", event.getSession().getId(), event.getName(), event.getValue()));
+            history.add(new Throwable());
+        }
+
+        @Override
+        public void attributeReplaced(HttpSessionBindingEvent event)
+        {
+            history.add(String.format("attrReplaced %s %s=%s", event.getSession().getId(), event.getName(), event.getValue()));
+        }
+
+        @Override
+        public void sessionCreated(HttpSessionEvent se)
+        {
+            history.add(String.format("sessionCreated %s", se.getSession().getId()));
+        }
+
+        @Override
+        public void sessionDestroyed(HttpSessionEvent se)
+        {
+            history.add(String.format("sessionDestroyed %s", se.getSession().getId()));
+            for (Enumeration<String> e = se.getSession().getAttributeNames(); e.hasMoreElements();)
+            {
+                String name = e.nextElement();
+                history.add(String.format("destroyed with %s %s=%s", se.getSession().getId(), name, se.getSession().getAttribute(name)));
+            }
+        }
+    }
+
     int redirectCount=0;
     /* ------------------------------------------------------------ */
     String pageType;
+    Listener listener = new Listener();
 
     /* ------------------------------------------------------------ */
     @Override
@@ -66,6 +112,7 @@ public class SessionDump extends HttpServlet
          throws ServletException
     {
         super.init(config);
+        getServletContext().addListener(listener);
     }
 
     /* ------------------------------------------------------------ */
@@ -185,6 +232,15 @@ public class SessionDump extends HttpServlet
             }
         }
 
+        out.println("</form><h2>History</h2><pre>");
+        for (Object o : listener.history)
+        {
+            if (o instanceof Throwable)
+                ((Throwable)o).printStackTrace(out);
+            else
+                out.println(o);
+        }
+        out.println("</pre>");
     }
 
     /* ------------------------------------------------------------ */
