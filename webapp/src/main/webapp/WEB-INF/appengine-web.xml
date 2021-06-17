@@ -3,5 +3,9 @@
   <runtime>java8</runtime>
   <threadsafe>true</threadsafe>
   <sessions-enabled>true</sessions-enabled>
+  <service>gae-dump</service>
+  <manual-scaling>
+    <instances>8</instances>
+  </manual-scaling>
 </appengine-web-app>
 

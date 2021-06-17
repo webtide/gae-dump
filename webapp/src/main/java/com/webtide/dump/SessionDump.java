@@ -18,12 +18,8 @@
 
 package com.webtide.dump;
 
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import javax.servlet.RequestDispatcher;
-import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -32,23 +28,21 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Date;
 import java.util.Enumeration;
-import javax.servlet.http.HttpSessionBindingEvent;
-import javax.servlet.http.HttpSessionEvent;
+import java.util.List;
 
 /** 
  * Test Servlet Sessions.
  */
 @SuppressWarnings("serial")
-@WebServlet(name = "Session", value = "/session", loadOnStartup = 1)
 public class SessionDump extends HttpServlet
 {
-    /** 
-      * Simple object attribute to test serialization
-      */
+    /**
+     * Simple object attribute to test serialization
+     */
     public class ObjectAttributeValue implements java.io.Serializable
     {
         long l;
-        
+
         public ObjectAttributeValue(long l)
         {
             this.l = l;
@@ -60,64 +54,17 @@ public class SessionDump extends HttpServlet
         }
     }
 
-    public static class Listener implements javax.servlet.http.HttpSessionAttributeListener, javax.servlet.http.HttpSessionListener
-    {
-        public List<Object> history = new CopyOnWriteArrayList<>();
-
-        @Override
-        public void attributeAdded(HttpSessionBindingEvent event)
-        {
-            history.add(String.format("attrAdded %s %s=%s", event.getSession().getId(), event.getName(), event.getValue()));
-        }
-
-        @Override
-        public void attributeRemoved(HttpSessionBindingEvent event)
-        {
-            history.add(String.format("attrRemoved %s %s=%s", event.getSession().getId(), event.getName(), event.getValue()));
-            history.add(new Throwable());
-        }
-
-        @Override
-        public void attributeReplaced(HttpSessionBindingEvent event)
-        {
-            history.add(String.format("attrReplaced %s %s=%s", event.getSession().getId(), event.getName(), event.getValue()));
-        }
-
-        @Override
-        public void sessionCreated(HttpSessionEvent se)
-        {
-            history.add(String.format("sessionCreated %s", se.getSession().getId()));
-        }
-
-        @Override
-        public void sessionDestroyed(HttpSessionEvent se)
-        {
-            history.add(String.format("sessionDestroyed %s", se.getSession().getId()));
-            for (Enumeration<String> e = se.getSession().getAttributeNames(); e.hasMoreElements();)
-            {
-                String name = e.nextElement();
-                history.add(String.format("destroyed with %s %s=%s", se.getSession().getId(), name, se.getSession().getAttribute(name)));
-            }
-        }
-    }
-
     int redirectCount=0;
-    /* ------------------------------------------------------------ */
-    String pageType;
-    Listener listener = new Listener();
 
-    /* ------------------------------------------------------------ */
     @Override
-    public void init(ServletConfig config)
-         throws ServletException
+    public void init() throws ServletException
     {
-        super.init(config);
-        getServletContext().addListener(listener);
+        super.init();
     }
 
     /* ------------------------------------------------------------ */
     protected void handleForm(HttpServletRequest request,
-                          HttpServletResponse response)
+                              HttpServletResponse response)
     {
         HttpSession session = request.getSession(false);
         String action = request.getParameter("Action");
@@ -126,7 +73,7 @@ public class SessionDump extends HttpServlet
 
         if (action!=null)
         {
-            if(action.equals("New Session"))
+            if (action.equals("New Session"))
             {
                 session = request.getSession(true);
                 session.setAttribute("test","value");
@@ -144,39 +91,39 @@ public class SessionDump extends HttpServlet
         }
     }
 
-    /* ------------------------------------------------------------ */
     @Override
     public void doPost(HttpServletRequest request,
                        HttpServletResponse response)
         throws ServletException, IOException
     {
+        HttpSession session = request.getSession(false);
+        List<String> history = session == null ? null : (List<String>)session.getAttribute(SessionHistoryListener.ATTR);
         handleForm(request,response);
-        String nextUrl = getURI(request)+"?R="+redirectCount++;
-        String encodedUrl=response.encodeRedirectURL(nextUrl);
-        response.sendRedirect(encodedUrl);
+        if (history == null)
+        {
+            session = request.getSession(false);
+            history = session == null ? null : (List<String>)session.getAttribute(SessionHistoryListener.ATTR);
+        }
+        doGet(request, response, history);
     }
 
-    /* ------------------------------------------------------------ */
     @Override
     public void doGet(HttpServletRequest request,
                       HttpServletResponse response)
         throws ServletException, IOException
     {
+        HttpSession session = request.getSession(false);
+        List<String> history = session == null ? null : (List<String>)session.getAttribute(SessionHistoryListener.ATTR);
+        doGet(request, response, history);
+    }
+
+    public void doGet(HttpServletRequest request, HttpServletResponse response, List<String> history)
+        throws ServletException, IOException
+    {
         handleForm(request,response);
+        HttpSession session = request.getSession(false);
 
         response.setContentType("text/html");
-
-        HttpSession session = request.getSession(getURI(request).indexOf("new")>0);
-        try
-        {
-            if (session!=null)
-                session.isNew();
-        }
-        catch(IllegalStateException e)
-        {
-            session=null;
-        }
-
         PrintWriter out = response.getWriter();
         out.println("<h1>Session Dump Servlet:</h1>");
         out.println("<a href=\"/\">home</a><br/>");
@@ -185,6 +132,7 @@ public class SessionDump extends HttpServlet
         if (session==null)
         {
             out.println("<H3>No Session</H3>");
+            out.println("<input type=\"submit\" name=\"Action\" value=\"Refresh\"/>");
             out.println("<input type=\"submit\" name=\"Action\" value=\"New Session\"/>");
         }
         else
@@ -197,7 +145,6 @@ public class SessionDump extends HttpServlet
                 out.println("<b>Last:</b> "+new Date(session.getLastAccessedTime())+"<br/>");
                 out.println("<b>Max Inactive:</b> "+session.getMaxInactiveInterval()+"<br/>");
                 out.println("<b>Context:</b> "+session.getServletContext()+"<br/>");
-
 
                 Enumeration<String> keys=session.getAttributeNames();
                 while(keys.hasMoreElements())
@@ -231,16 +178,15 @@ public class SessionDump extends HttpServlet
                 e.printStackTrace();
             }
         }
+        out.println("</form>");
 
-        out.println("</form><h2>History</h2><pre>");
-        for (Object o : listener.history)
+        if (history != null)
         {
-            if (o instanceof Throwable)
-                ((Throwable)o).printStackTrace(out);
-            else
-                out.println(o);
+            out.println("<h2>History</h2><pre>");
+            for (String s : history)
+                out.println(s);
+            out.println("</pre>");
         }
-        out.println("</pre>");
     }
 
     /* ------------------------------------------------------------ */
@@ -257,5 +203,4 @@ public class SessionDump extends HttpServlet
             uri=request.getRequestURI();
         return uri;
     }
-
 }

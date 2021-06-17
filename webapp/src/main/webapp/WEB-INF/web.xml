@@ -12,6 +12,9 @@
     <listener-class>com.acme.test.TestListener</listener-class>
   </listener>
 
+  <listener>
+    <listener-class>com.webtide.dump.SessionHistoryListener</listener-class>
+  </listener>
 
   <servlet>
     <servlet-name>AnnotationTest</servlet-name>
@@ -47,6 +50,17 @@
   <servlet-mapping>
     <servlet-name>Multi</servlet-name>
     <url-pattern>/multi/*</url-pattern>
+  </servlet-mapping>
+
+  <servlet>
+    <servlet-name>SessionDump</servlet-name>
+    <servlet-class>com.webtide.dump.SessionDump</servlet-class>
+    <load-on-startup>1</load-on-startup>
+  </servlet>
+
+  <servlet-mapping>
+    <servlet-name>SessionDump</servlet-name>
+    <url-pattern>/session</url-pattern>
   </servlet-mapping>
 
   <!--
