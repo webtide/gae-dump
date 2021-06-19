@@ -5,7 +5,7 @@
   <sessions-enabled>true</sessions-enabled>
   <service>gae-dump</service>
   <manual-scaling>
-    <instances>8</instances>
+    <instances>2</instances>
   </manual-scaling>
 </appengine-web-app>
 
